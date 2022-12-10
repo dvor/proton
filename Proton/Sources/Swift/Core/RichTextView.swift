@@ -472,6 +472,35 @@ class RichTextView: AutogrowingTextView {
             didTap(at: position)
         }
     }
+    
+    // Allowing both links & editable state
+    override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
+        super.touchesEnded(touches, with: event)
+        
+        guard let touchPoint = touches.first?.location(in: self) else { fatalError() }
+        
+        let glyphIndex = self.layoutManager.glyphIndex(for: touchPoint, in: self.textContainer)
+        let glyphRect = self.layoutManager.boundingRect(forGlyphRange: NSRange(location: glyphIndex, length: 1), in: self.textContainer)
+        
+        if glyphIndex < self.textStorage.length,
+           glyphRect.contains(touchPoint),
+           self.textStorage.attribute(NSAttributedString.Key.link, at: glyphIndex, effectiveRange: nil) != nil {
+            // Then touchEnded on url
+            return
+        } else {
+            isEditable = true
+            
+            // Retreive the insert point from touch.
+            guard let position = closestPosition(to: touchPoint) else { fatalError() }
+            guard let range: UITextRange = self.textRange(from: position, to: position) else { fatalError() }
+            
+            // You will want to make the text view enter editing mode by one tap, not two.
+            becomeFirstResponder()
+            
+            // Set the insert point.
+            selectedTextRange = range
+        }
+    }
 
     // When a user enables `Use keyboard navigation to move focus between controls` it enables the focus system in the app.
     // It means focused item also becomes the first responder. UITextView is focusable by default, but if isEditable is set to false, it cannot be focussed anymore.
